@@ -41,12 +41,14 @@ jobs:
     env:
       EXPECTED_VERSION: ${{ inputs.expected_version }}
       VERSION_BUMP: ${{ inputs.version_bump }}
-      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0 # need full history + tags to compute the next version
           fetch-tags: true
+          # The write-capable token must not sit in .git/config while install, verify, build
+          # and publish run third-party code. The tag is created through the API, not by git.
+          persist-credentials: false
 
       - uses: oven-sh/setup-bun@v2
         with:
@@ -91,5 +93,8 @@ jobs:
         run: bun run release:publish
 
       # Creates the git tag at this commit and the GitHub release with generated notes.
+      # The only step that needs `contents: write`, so the token is scoped to it alone.
       - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: bun run release:create-github-release

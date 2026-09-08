@@ -22,6 +22,13 @@ const oomol = new OomolToolProvider({
 
 const TOOLKIT = "gmail";
 
+// 0. Remember what already exists. `authId` is an attempt handle, not a connection id, and the
+//    list comes back in the backend's own order, so the only reliable way to name the connection
+//    this run created is to diff the ids around the flow.
+const before = new Set(
+  (await oomol.listConnections({ toolkit: TOOLKIT })).items.map((c) => c.connectionId),
+);
+
 // 1. Start the flow. `connectionId` is required by Mastra's signature but ignored here: the
 //    backend mints the connection, and its id, only after the user finishes.
 const { url, authId } = await oomol.authorize({ toolkit: TOOLKIT, connectionId: "unused" });
@@ -51,13 +58,17 @@ const connected = items.filter((c) => c.status === "active");
 console.log("active connections:", connected.map((c) => c.connectionId));
 
 // 4. Use it. The provider turns the pinned id into the connection the SDK executes against.
-const newest = connected.at(-1);
-if (newest) {
-  const tools = await oomol.resolveToolsVNext({
-    toolSlugs: [`${TOOLKIT}.search_threads`],
-    toolMeta: { [`${TOOLKIT}.search_threads`]: { toolkit: TOOLKIT } },
-    toolkit: TOOLKIT,
-    connectionId: newest.connectionId,
-  });
-  console.log("resolved tools:", Object.keys(tools));
+//    Anything but a connection that appeared during this flow would be someone else's account.
+const added = connected.filter((c) => !before.has(c.connectionId));
+if (added.length !== 1) {
+  console.log(`expected exactly one new connection, got ${added.length}; pin one of the ids above by hand`);
+  process.exit(0);
 }
+
+const tools = await oomol.resolveToolsVNext({
+  toolSlugs: [`${TOOLKIT}.search_threads`],
+  toolMeta: { [`${TOOLKIT}.search_threads`]: { toolkit: TOOLKIT } },
+  toolkit: TOOLKIT,
+  connectionId: added[0]!.connectionId,
+});
+console.log("resolved tools:", Object.keys(tools));

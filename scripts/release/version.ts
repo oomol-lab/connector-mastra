@@ -25,10 +25,17 @@ function isNumericSegment(segment: string): boolean {
   return true;
 }
 
-/** A stable release version is exactly three numeric segments (no pre-release / build metadata). */
+/**
+ * A stable release version is exactly three numeric segments (no pre-release / build metadata).
+ *
+ * SemVer forbids a leading zero in a numeric identifier, so `01.2.3` is rejected. Accepting it
+ * would let `compute-version` mint a tag and a package.json version that no resolver treats as
+ * equal to the `1.2.3` they look like.
+ */
 export function isStableSemver(version: string): boolean {
   const segments = version.split(".");
-  return segments.length === 3 && segments.every(isNumericSegment);
+  return segments.length === 3
+    && segments.every((segment) => isNumericSegment(segment) && (segment === "0" || !segment.startsWith("0")));
 }
 
 /** Returns the bare version for a stable `vX.Y.Z` tag, or `undefined` for anything else. */

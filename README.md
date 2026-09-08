@@ -35,9 +35,13 @@ Two providers ship in the package, mirroring the SDK's two personal clients:
 npm install @oomol-lab/connector-mastra @mastra/core   # or: bun add / pnpm add / yarn add
 ```
 
-`@mastra/core` is a peer dependency (types only, `^1.64`). The package itself depends on nothing but `@oomol-lab/connector`; it imports no Mastra code at runtime and needs no Zod. Node ≥ 20.
+`@mastra/core` is a peer dependency (types only, `^1.64`). The package itself depends on nothing but `@oomol-lab/connector`; it imports no Mastra code at runtime and needs no Zod. Node ≥ 20. The editor example above also needs `@mastra/editor`, which this package neither requires nor imports:
 
-You need an OOMOL Connector API key (`api-…`): <https://console.oomol.com/api-key>. Connect the accounts you want agents to use in the console as well; the provider lists and uses connections, it does not create them.
+```sh
+npm install @mastra/editor
+```
+
+You need an OOMOL Connector API key (`api-…`): <https://console.oomol.com/api-key>. Accounts can be connected two ways: in the console, or through the provider's `authorize` flow, which is what the editor's "Connect" button drives. See [Connecting an account](#connecting-an-account). Removing a connection is console-only.
 
 ## In the editor
 

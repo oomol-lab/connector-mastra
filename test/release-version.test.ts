@@ -22,6 +22,15 @@ describe("isStableSemver / parseStableTag", () => {
     expect(isStableSemver("1.2.x")).toBe(false);
   });
 
+  it("rejects leading zeroes, which SemVer forbids in a numeric identifier", () => {
+    expect(isStableSemver("01.2.3")).toBe(false);
+    expect(isStableSemver("1.02.3")).toBe(false);
+    expect(isStableSemver("1.2.03")).toBe(false);
+    expect(isStableSemver("0.0.0")).toBe(true);
+    expect(isStableSemver("0.1.10")).toBe(true);
+    expect(parseStableTag("v01.2.3")).toBeUndefined();
+  });
+
   it("parses stable tags and rejects pre-releases", () => {
     expect(parseStableTag("v1.2.3")).toBe("1.2.3");
     expect(parseStableTag("1.2.3")).toBeUndefined();
