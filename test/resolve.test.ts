@@ -58,6 +58,52 @@ describe("resolveToolsVNext — tool shape", () => {
   });
 });
 
+/**
+ * The allowlists are a fence, not a display filter: an agent config pinned before the allowlist
+ * tightened still hands its old slugs to the resolver, so both resolvers re-apply them.
+ */
+describe("resolveTools / resolveToolsVNext — allowlists", () => {
+  it("drops a slug outside allowedTools, on both resolvers", async () => {
+    const opts = { allowedTools: { gmail: ["gmail.search_*"] } };
+    const slugs = ["gmail.search_threads", "gmail.send_email"];
+
+    const vnext = hosted(undefined, opts);
+    expect(Object.keys(await vnext.provider.resolveToolsVNext({ toolSlugs: slugs, toolMeta: {}, connectionId: "" })))
+      .toEqual(["gmail.search_threads"]);
+
+    const legacy = hosted(undefined, opts);
+    expect(Object.keys(await legacy.provider.resolveTools(slugs))).toEqual(["gmail.search_threads"]);
+  });
+
+  it("drops a slug outside allowedToolkits without fetching that toolkit's catalog", async () => {
+    const { provider, gw } = hosted(undefined, { allowedToolkits: ["gmail"] });
+    const tools = await provider.resolveToolsVNext({
+      toolSlugs: ["gmail.search_threads", "slack.post_message"],
+      toolMeta: {},
+      connectionId: "",
+    });
+    expect(Object.keys(tools)).toEqual(["gmail.search_threads"]);
+    expect(gw.of("GET /v1/actions").map((c) => c.url.searchParams.get("service"))).toEqual(["gmail"]);
+  });
+
+  it("trusts the action's own service over a toolMeta.toolkit that claims an allowed one", async () => {
+    // toolMeta says "gmail", but `slack.post_message` really belongs to the excluded slack toolkit.
+    const { provider } = hosted(undefined, { allowedToolkits: ["gmail"] });
+    const tools = await provider.resolveToolsVNext({
+      toolSlugs: ["slack.post_message"],
+      toolMeta: { "slack.post_message": { toolkit: "gmail" } },
+      connectionId: "",
+    });
+    expect(tools).toEqual({});
+  });
+
+  it("returns {} without any request when every slug is fenced off", async () => {
+    const { provider, gw } = hosted(undefined, { allowedToolkits: ["github"] });
+    expect(await provider.resolveToolsVNext({ toolSlugs: ["gmail.search_threads"], toolMeta: {}, connectionId: "" })).toEqual({});
+    expect(gw.calls).toHaveLength(0);
+  });
+});
+
 describe("resolveToolsVNext — execute", () => {
   it("POSTs the input to the action on the client default connection when connectionId is empty", async () => {
     const { provider, gw } = hosted();

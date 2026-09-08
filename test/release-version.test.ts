@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  assertPublishedFromCommit,
   bumpVersion,
   computeReleaseVersion,
   findLatestStableTag,
@@ -136,5 +137,28 @@ describe("computeReleaseVersion", () => {
         baseVersion: "0.1.0",
       }),
     ).toThrow(/already exists/);
+  });
+});
+
+describe("assertPublishedFromCommit", () => {
+  const spec = "@oomol-lab/connector-mastra@1.2.3";
+  const sha = "a29c4c423e039b3414b58572759e31280181a08e";
+
+  it("accepts an existing publish made from the commit this run will tag", () => {
+    expect(() => assertPublishedFromCommit({ packageSpec: spec, publishedGitHead: sha, currentSha: sha })).not.toThrow();
+  });
+
+  it("stands down when there is no commit to compare (local dry-run)", () => {
+    expect(() => assertPublishedFromCommit({ packageSpec: spec, publishedGitHead: "", currentSha: "" })).not.toThrow();
+  });
+
+  it("rejects an existing publish from a different commit", () => {
+    expect(() => assertPublishedFromCommit({ packageSpec: spec, publishedGitHead: "b".repeat(40), currentSha: sha }))
+      .toThrow(/published from b{40}, but this run would tag a29c4c4/);
+  });
+
+  it("rejects an existing publish that records no gitHead at all", () => {
+    expect(() => assertPublishedFromCommit({ packageSpec: spec, publishedGitHead: "", currentSha: sha }))
+      .toThrow(/records no gitHead/);
   });
 });

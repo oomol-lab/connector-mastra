@@ -104,7 +104,7 @@ Both providers accept, on top of the SDK config they pass through:
 
 | Option | Default | Effect |
 | --- | --- | --- |
-| `allowedToolkits` | all | Keep only toolkits (services) whose slug matches: exact `"gmail"` or prefix wildcard `"google*"`. |
+| `allowedToolkits` | all | Keep only toolkits (services) whose slug matches: exact `"gmail"` or prefix wildcard `"google*"`. Enforced on `resolveTools` too, not just discovery. |
 | `allowedTools` | all | Per-toolkit tool allowlist, keyed by toolkit slug, patterns over tool slugs (`"gmail.search_*"`). An absent toolkit is unfiltered; `[]` hides it entirely. |
 | `validateOutput` | `false` | Attach each action's `outputSchema` so Mastra validates tool results. Off by default: a strict schema turns a provider response that drifts from it into a tool error, even though the call succeeded. |
 | `authorizeReturnUri` | — | Where the browser lands after an `authorize` flow completes, with `status` and `service` appended. Omit and the backend renders its own result page, which loses nothing: Mastra learns the outcome from `getAuthStatus`, not from the redirect. |

@@ -7,6 +7,8 @@ import type { ClientConfig, Connector, OpenConnector, OpenConnectorConfig } from
 /**
  * Options shared by both providers. The allowlists follow the same semantics as Mastra's own
  * `BaseToolProviderOptions`, so a config written for `ComposioToolProvider` reads the same here.
+ * They are enforced on resolution as well as discovery: an agent that pinned a slug before the
+ * allowlist tightened gets it dropped rather than executed.
  */
 export interface OomolToolProviderOptions {
   /**

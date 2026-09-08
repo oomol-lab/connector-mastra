@@ -115,3 +115,40 @@ export function computeReleaseVersion(input: {
 
   return { version, tagName, previousTag };
 }
+
+/**
+ * Guards the idempotent publish: decides whether an already-published `name@version` may be
+ * treated as *this* release's artifact.
+ *
+ * `compute-version` never picks a version whose tag exists, so npm can only be ahead of git when
+ * an earlier run published and then failed before tagging (or someone published out of band).
+ * Skipping the publish is right in the first case and wrong in the second: the release step would
+ * go on to create `v${version}` at this run's commit, leaving the tag pointing at source the
+ * published package does not contain.
+ *
+ * `gitHead` is the commit npm recorded at publish time, so it settles which case this is. An
+ * absent one means the artifact was not published from a git checkout by this workflow, which is
+ * exactly the case that needs a human. Without a `currentSha` (a local dry-run) there is nothing
+ * to compare and the check stands down.
+ */
+export function assertPublishedFromCommit(input: {
+  packageSpec: string;
+  publishedGitHead: string;
+  currentSha: string;
+}): void {
+  if (input.currentSha === "") return;
+  if (input.publishedGitHead === "") {
+    throw new Error(
+      `${input.packageSpec} already exists on npm but records no gitHead, so it cannot be matched `
+      + `to ${input.currentSha}. Reconcile the release by hand: publish a new version, or delete `
+      + "the tag/release expectation for this one.",
+    );
+  }
+  if (input.publishedGitHead !== input.currentSha) {
+    throw new Error(
+      `${input.packageSpec} already exists on npm, published from ${input.publishedGitHead}, but `
+      + `this run would tag ${input.currentSha}. Releasing would make the git tag identify source `
+      + "the published package does not contain — bump to a new version instead.",
+    );
+  }
+}

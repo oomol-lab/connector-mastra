@@ -4,6 +4,10 @@
  *
  * Run with a real API key (and a model provider key Mastra can route to):
  *   OOMOL_API_KEY=api-... OPENAI_API_KEY=sk-... bun run examples/agent.ts
+ *
+ * Tools run on the client's default connection. Set OOMOL_CONNECTION_NAME to pick one of your
+ * named connections instead (the `alias` shown by `apps.list()` in the SDK, or `listConnections`
+ * here).
  */
 import { Agent } from "@mastra/core/agent";
 import { OomolToolProvider } from "@oomol-lab/connector-mastra";
@@ -18,9 +22,11 @@ const oomol = new OomolToolProvider({
 const { data: gmailTools } = await oomol.listTools({ toolkit: "gmail", perPage: 5 });
 console.log("gmail tools:", gmailTools.map((t) => t.slug));
 
-// Materialize executable tools. Runs on the client's default connection unless `connectionName`
-// names one of your connections (see `apps.list()` in the SDK, or `listConnections` here).
-const tools = await oomol.resolveTools(["gmail.search_threads"], undefined, { connectionName: "work" });
+// Materialize executable tools. An unset OOMOL_CONNECTION_NAME leaves `connectionName` undefined,
+// which is how the provider is told to use the client's default connection.
+const tools = await oomol.resolveTools(["gmail.search_threads"], undefined, {
+  connectionName: process.env.OOMOL_CONNECTION_NAME,
+});
 
 const agent = new Agent({
   id: "inbox-assistant",

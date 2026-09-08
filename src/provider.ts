@@ -292,13 +292,20 @@ export class OomolToolProviderBase<C extends ConnectorLike = ConnectorLike> impl
     if (slugs.length === 0) return {};
     const byToolkit = new Map<string, true>();
     for (const slug of slugs) byToolkit.set(toolMeta[slug]?.toolkit ?? toolkitOf(slug), true);
-    const catalogs = await mapLimit([...byToolkit.keys()], CATALOG_CONCURRENCY, (tk) => this.connector.catalog.actions(tk));
+    // Disallowed toolkits are dropped before the fetch, so a fully excluded resolve costs no
+    // request — the same short-circuit `listToolsVNext` does for an excluded `opts.toolkit`.
+    const toolkits = [...byToolkit.keys()].filter((tk) => this.#toolkitAllowed(tk));
+    const catalogs = await mapLimit(toolkits, CATALOG_CONCURRENCY, (tk) => this.connector.catalog.actions(tk));
     const actions = new Map(catalogs.flat().map((a) => [a.id, a] as const));
     const tools: Record<string, MastraTool> = {};
     for (const slug of slugs) {
       const action = actions.get(slug);
-      // A slug the catalog no longer has is skipped, matching how Mastra's bundled providers behave.
-      if (action) tools[slug] = this.#toTool(action, toolMeta[slug]?.description, connection);
+      // Two kinds of slug are skipped: one the catalog no longer has (matching how Mastra's
+      // bundled providers behave), and one the allowlists exclude. The allowlists have to be
+      // re-checked here and not only in discovery — an agent config pinned before the allowlist
+      // tightened still asks for its old slugs, and resolving them would execute past the fence.
+      if (!action || !this.#toolkitAllowed(action.service) || !this.#toolAllowed(action)) continue;
+      tools[slug] = this.#toTool(action, toolMeta[slug]?.description, connection);
     }
     return tools;
   }

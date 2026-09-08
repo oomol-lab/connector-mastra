@@ -6,14 +6,15 @@
  *   set-version             Write RELEASE_VERSION into package.json (so the build bakes the
  *                           matching __PKG_VERSION__ before publish).
  *   publish                 Publish the current package to npm (idempotent; skips if the
- *                           version already exists). In CI it authenticates via npm OIDC
- *                           trusted publishing (no token) and adds --provenance.
+ *                           version already exists AND npm published it from GITHUB_SHA).
+ *                           In CI it authenticates via npm OIDC trusted publishing (no
+ *                           token) and adds --provenance.
  *   create-github-release   Create the git tag + GitHub release at GITHUB_SHA (idempotent).
  *
  * Inputs are read from the environment so the same script works as plain CI steps:
  *   compute-version  ← EXPECTED_VERSION, VERSION_BUMP
  *   set-version      ← RELEASE_VERSION
- *   publish          ← RELEASE_VERSION, GITHUB_ACTIONS (auth via OIDC trusted publishing in CI)
+ *   publish          ← RELEASE_VERSION, GITHUB_SHA, GITHUB_ACTIONS (auth via OIDC trusted publishing in CI)
  *   create-release   ← RELEASE_TAG, PREVIOUS_TAG, GITHUB_SHA, GH_TOKEN
  */
 
@@ -31,6 +32,7 @@ import {
   writeGitHubEnv,
 } from "./lib";
 import {
+  assertPublishedFromCommit,
   computeReleaseVersion,
   isStableSemver,
   readVersionBump,
@@ -80,12 +82,34 @@ function npmVersionExists(packageSpec: string): boolean {
   throw new Error(`Failed to query npm for ${packageSpec}:\n${(result.stderr || result.stdout).trim()}`);
 }
 
+/**
+ * The commit npm recorded when `packageSpec` was published, or `""` when the manifest carries no
+ * `gitHead`. `npm view <spec> <field> --json` prints nothing at all for a field the manifest
+ * lacks, which is why an empty stdout is a valid answer rather than an error.
+ */
+function npmGitHead(packageSpec: string): string {
+  const result = runCapture("npm", ["view", packageSpec, "gitHead", "--json"]);
+  const stdout = result.stdout.trim();
+  if (result.status !== 0) {
+    throw new Error(`Failed to read gitHead for ${packageSpec}:\n${(result.stderr || result.stdout).trim()}`);
+  }
+  if (stdout === "") return "";
+  const parsed: unknown = JSON.parse(stdout);
+  return typeof parsed === "string" ? parsed : "";
+}
+
 async function runPublish(): Promise<void> {
   const version = readRequiredEnv("RELEASE_VERSION");
   const name = await readPackageName(packageJsonPath);
   const packageSpec = `${name}@${version}`;
 
   if (npmVersionExists(packageSpec)) {
+    // Idempotent only when npm's copy came from the very commit this run will tag.
+    assertPublishedFromCommit({
+      packageSpec,
+      publishedGitHead: npmGitHead(packageSpec),
+      currentSha: process.env.GITHUB_SHA ?? "",
+    });
     process.stdout.write(`Skipping publish: ${packageSpec} already exists on npm.\n`);
     return;
   }
