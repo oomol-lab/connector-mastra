@@ -1,0 +1,26 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: .bun-version
+      - run: bun install --frozen-lockfile
+      - name: Lint
+        run: bun run lint
+      - name: Typecheck (src + tests)
+        run: bun run typecheck
+      - name: Build (ESM + CJS + d.ts)
+        run: bun run build
+      - name: Unit tests + coverage (100% thresholds)
+        run: bun run test:coverage
+      - name: Type-level acceptance (tsd consumer + examples against dist)
+        run: bun run test:types
