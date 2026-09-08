@@ -1,0 +1,34 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# Read-only: nothing here writes to the repository, and a pull request runs code from
+# the branch under review, so the token it inherits must be able to do nothing with it.
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          # No step performs an authenticated git operation, so the token stays out of .git/config.
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: .bun-version
+      - run: bun install --frozen-lockfile
+      - name: Lint
+        run: bun run lint
+      - name: Typecheck (src + tests)
+        run: bun run typecheck
+      - name: Build (ESM + CJS + d.ts)
+        run: bun run build
+      - name: Unit tests + coverage (100% thresholds)
+        run: bun run test:coverage
+      - name: Type-level acceptance (tsd consumer + examples against dist)
+        run: bun run test:types

@@ -1,0 +1,77 @@
+{
+  "name": "@oomol-lab/connector-mastra",
+  "version": "0.0.0",
+  "description": "Mastra ToolProvider for the OOMOL Connector: surface your connected accounts (Gmail, Slack, GitHub, Notion, ...) as tools in the Mastra editor and in code-configured agents.",
+  "type": "module",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/oomol-lab/connector-mastra.git"
+  },
+  "publishConfig": {
+    "registry": "https://registry.npmjs.org"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.cts",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/index.d.mts",
+        "default": "./dist/index.mjs"
+      },
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/index.cjs"
+      }
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "sideEffects": false,
+  "keywords": [
+    "mastra",
+    "tool-provider",
+    "oomol",
+    "connector",
+    "agent",
+    "tools",
+    "integrations"
+  ],
+  "scripts": {
+    "build": "tsdown",
+    "typecheck": "tsc --noEmit && tsc -p tsconfig.test.json",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "test:types": "bun run scripts/test-types.ts",
+    "example": "bun run examples/agent.ts",
+    "lint": "oxlint",
+    "check": "bun run lint && bun run typecheck && bun run build && bun run test:coverage && bun run test:types",
+    "release:compute-version": "bun scripts/release/cli.ts compute-version",
+    "release:set-version": "bun scripts/release/cli.ts set-version",
+    "release:publish": "bun scripts/release/cli.ts publish",
+    "release:create-github-release": "bun scripts/release/cli.ts create-github-release"
+  },
+  "dependencies": {
+    "@oomol-lab/connector": "^1.2.0"
+  },
+  "peerDependencies": {
+    "@mastra/core": "^1.64.0"
+  },
+  "devDependencies": {
+    "@mastra/core": "1.64.0",
+    "@types/node": "^25.9.3",
+    "@vitest/coverage-v8": "^4.1.9",
+    "oxlint": "^1.70.0",
+    "tsd": "^0.33.0",
+    "tsdown": "^0.22.2",
+    "typescript": "6.0.3",
+    "vitest": "^4.1.9",
+    "zod": "^4.1.0"
+  }
+}
